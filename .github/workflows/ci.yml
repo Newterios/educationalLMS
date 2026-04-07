@@ -35,7 +35,7 @@ jobs:
         run: go mod download
       - name: Build
         working-directory: services/${{ matrix.service }}
-        run: go build ./...
+        run: go vet ./...
       - name: Test
         working-directory: services/${{ matrix.service }}
         run: go test ./... -v
