@@ -1,4 +1,4 @@
-# EDULMS — Education Learning Management System
+# EDULMS — Education Learning Management System (aitbek.tech)
 
 A full-featured learning management platform built with microservices architecture, designed for universities and educational institutions. Supports three languages: English, Russian, and Kazakh.
 
