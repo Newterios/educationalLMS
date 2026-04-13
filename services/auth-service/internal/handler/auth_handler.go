@@ -147,6 +147,19 @@ func (h *AuthHandler) ValidateToken(c *gin.Context) {
 	})
 }
 
+func (h *AuthHandler) ValidateAdmin(c *gin.Context) {
+	claims, err := h.extractClaims(c)
+	if err != nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	if claims.Role != "superadmin" {
+		c.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+	c.Status(http.StatusOK)
+}
+
 func (h *AuthHandler) extractClaims(c *gin.Context) (*service.Claims, error) {
 	auth := c.GetHeader("Authorization")
 	if auth == "" {

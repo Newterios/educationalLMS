@@ -52,6 +52,7 @@ func main() {
 	r.POST("/logout", h.Logout)
 	r.GET("/me", h.GetMe)
 	r.GET("/validate", h.ValidateToken)
+	r.GET("/validate-admin", h.ValidateAdmin)
 
 	port := cfg.Port
 	if port == "" {
