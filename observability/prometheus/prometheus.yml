@@ -1,0 +1,73 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: production
+    project: edulms
+    domain: aitbek.tech
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]
+
+  - job_name: node-exporter
+    static_configs:
+      - targets: [node-exporter:9100]
+    relabel_configs:
+      - target_label: instance
+        replacement: aitbek-tech-server
+
+  - job_name: nginx-gateway
+    static_configs:
+      - targets: [nginx-exporter:9113]
+    relabel_configs:
+      - target_label: instance
+        replacement: api-gateway
+
+  - job_name: postgres-exporter
+    static_configs:
+      - targets: [postgres-exporter:9187]
+    relabel_configs:
+      - target_label: instance
+        replacement: postgres-primary
+
+  - job_name: redis-exporter
+    static_configs:
+      - targets: [redis-exporter:9121]
+    relabel_configs:
+      - target_label: instance
+        replacement: redis-cache
+
+  - job_name: edulms-services
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - auth-service:8001
+          - user-service:8002
+          - course-service:8003
+          - assessment-service:8004
+          - attendance-service:8005
+          - notification-service:8006
+          - media-service:8007
+          - analytics-service:8008
+          - ai-service:8009
+          - payment-service:8010
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+        replacement: http://$1/health
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115

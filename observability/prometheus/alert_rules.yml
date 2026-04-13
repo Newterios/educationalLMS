@@ -1,0 +1,136 @@
+groups:
+  - name: edulms_availability
+    interval: 30s
+    rules:
+      # SLI 1: HTTP Availability - warning when error rate exceeds 1%
+      - alert: HighErrorRateWarning
+        expr: |
+          (
+            sum(rate(nginx_http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(nginx_http_requests_total[5m]))
+          ) * 100 > 1
+        for: 2m
+        labels:
+          severity: warning
+          team: sre
+          service: api-gateway
+        annotations:
+          summary: "WARNING: Elevated HTTP 5xx error rate on aitbek.tech"
+          description: >
+            The HTTP 5xx error rate is {{ printf "%.2f" $value }}% over the last 5 minutes.
+            SLO target is 99.5% availability (max 0.5% error rate).
+            Current error budget burn rate is elevated.
+            Dashboard: http://grafana.aitbek.tech:3000/d/edulms-golden-signals
+
+      # SLI 1: HTTP Availability - critical when error rate exceeds 5%
+      - alert: HighErrorRateCritical
+        expr: |
+          (
+            sum(rate(nginx_http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(nginx_http_requests_total[5m]))
+          ) * 100 > 5
+        for: 1m
+        labels:
+          severity: critical
+          team: sre
+          service: api-gateway
+        annotations:
+          summary: "CRITICAL: High HTTP 5xx error rate on aitbek.tech - SLO BREACH"
+          description: >
+            The HTTP 5xx error rate is {{ printf "%.2f" $value }}% over the last 5 minutes.
+            This exceeds the critical threshold of 5%.
+            SLO (99.5% availability) is actively being violated.
+            Immediate action required. Page on-call engineer.
+            Dashboard: http://grafana.aitbek.tech:3000/d/edulms-golden-signals
+
+  - name: edulms_latency
+    interval: 30s
+    rules:
+      # SLI 2: Latency - warning when p95 latency > 500ms
+      - alert: HighLatencyWarning
+        expr: |
+          node_load1 / count(node_cpu_seconds_total{mode="idle"}) without (cpu, mode) > 0.70
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+          service: host
+        annotations:
+          summary: "WARNING: High CPU load on aitbek.tech server"
+          description: >
+            CPU load average (1m) is at {{ printf "%.0f" $value }}% of capacity.
+            This may impact API response latency SLO (p95 < 500ms).
+            Investigate traffic spikes or resource-intensive operations.
+
+      # SLI 2: Latency - critical when node CPU load is saturated
+      - alert: HighLatencyCritical
+        expr: |
+          node_load1 / count(node_cpu_seconds_total{mode="idle"}) without (cpu, mode) > 0.90
+        for: 2m
+        labels:
+          severity: critical
+          team: sre
+          service: host
+        annotations:
+          summary: "CRITICAL: CPU saturation on aitbek.tech - Latency SLO at risk"
+          description: >
+            CPU load average (1m) is at {{ printf "%.0f" $value }}% of capacity.
+            System is saturated. API latency SLO (p95 < 500ms) is being violated.
+            Immediate action required. Consider scaling or traffic shedding.
+
+  - name: edulms_infrastructure
+    interval: 60s
+    rules:
+      - alert: PostgresDown
+        expr: up{job="postgres-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: sre
+          service: postgres
+        annotations:
+          summary: "CRITICAL: PostgreSQL is unreachable"
+          description: >
+            PostgreSQL exporter is reporting the database as down.
+            All services depending on PostgreSQL (auth, user, course, assessment, attendance, media, analytics, payment) are affected.
+
+      - alert: RedisDown
+        expr: up{job="redis-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: sre
+          service: redis
+        annotations:
+          summary: "CRITICAL: Redis cache is unreachable"
+          description: >
+            Redis exporter reports the cache as down.
+            Session management and rate limiting are affected.
+
+      - alert: DiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|fuse.lxcfs"}) * 100 < 20
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+          service: host
+        annotations:
+          summary: "WARNING: Low disk space on aitbek.tech server"
+          description: >
+            Disk {{ $labels.device }} mounted at {{ $labels.mountpoint }} has only {{ printf "%.1f" $value }}% free space remaining.
+
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+          service: host
+        annotations:
+          summary: "WARNING: High memory usage on aitbek.tech server"
+          description: >
+            Memory usage is at {{ printf "%.1f" $value }}%. The system is under memory pressure. Check for memory leaks or increase server RAM.

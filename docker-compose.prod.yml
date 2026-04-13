@@ -263,8 +263,118 @@ services:
       - payment-service
     restart: always
 
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    volumes:
+      - ./observability/blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    restart: always
+    networks:
+      - observability
+      - default
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    command:
+      - --path.rootfs=/host
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro,rslave
+    restart: always
+    networks:
+      - observability
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.1.0
+    command: --nginx.scrape-uri=http://gateway/nginx_status
+    depends_on:
+      - gateway
+    restart: always
+    networks:
+      - observability
+      - default
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    environment:
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+    networks:
+      - observability
+      - default
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.61.0
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+    networks:
+      - observability
+      - default
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --web.enable-lifecycle
+      - --web.external-url=http://aitbek.tech:9090
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      - node-exporter
+      - nginx-exporter
+      - postgres-exporter
+      - redis-exporter
+    restart: always
+    networks:
+      - observability
+      - default
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    environment:
+      GF_SERVER_ROOT_URL: http://aitbek.tech:3001
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_INSTALL_PLUGINS: ""
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/edulms-golden-signals.json
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3001:3000"
+    depends_on:
+      - prometheus
+    restart: always
+    networks:
+      - observability
+
+networks:
+  default:
+    driver: bridge
+  observability:
+    driver: bridge
+
 volumes:
   postgres-data:
   mongo-data:
   redis-data:
   minio-data:
+  prometheus-data:
+  grafana-data:
