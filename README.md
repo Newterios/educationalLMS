@@ -261,3 +261,73 @@ All primary keys use UUID. Multilingual fields follow the pattern `field_en`, `f
 - Go services follow a standard `cmd/main.go` + `internal/{config,handler,repository,service}` layout
 - Each service has its own Dockerfile with multi-stage builds
 - Health check endpoints at `GET /health` on each service
+
+---
+
+## Kubernetes
+
+A minimal Kubernetes manifest set is provided in `k8s/` for final project criteria:
+
+- Namespace
+- ConfigMap + Secret
+- Deployments + Services
+- PersistentVolumeClaim (PostgreSQL)
+- Ingress
+
+Quick start:
+
+```bash
+kubectl apply -f k8s/
+kubectl get pods,svc,ing -n edulms
+```
+
+Images in manifests are referenced as `edulms/<service>:latest`; build/push those images before deployment.
+
+---
+
+## Terraform
+
+A minimal Terraform IaC setup is provided in `terraform/` to satisfy provisioning criteria:
+
+- VPC provisioning
+- VM (Droplet) provisioning
+- Firewall/network access rules
+- Outputs for VM IP and VPC ID
+
+Quick start:
+
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars
+terraform init
+terraform plan
+terraform apply
+```
+
+---
+
+## Ansible
+
+Automation playbooks are provided in `ansible/`:
+
+- Host preparation (Docker/dependencies)
+- Application deployment
+- Monitoring restart/setup step
+
+Run:
+
+```bash
+cd ansible
+ansible-playbook -i inventory.yml playbooks/01_prepare.yml
+ansible-playbook -i inventory.yml playbooks/02_deploy.yml
+ansible-playbook -i inventory.yml playbooks/03_monitoring.yml
+```
+
+---
+
+## Incident and Capacity Docs
+
+Final-report supporting documents:
+
+- Incident report + postmortem: `docs/incident-postmortem.md`
+- Capacity planning report: `docs/capacity-planning.md`

@@ -1,0 +1,19 @@
+---
+- name: Configure monitoring stack
+  hosts: all
+  become: true
+  tasks:
+    - name: Ensure observability files exist
+      stat:
+        path: "{{ project_root }}/observability/prometheus/prometheus.yml"
+      register: prom_cfg
+
+    - name: Fail if Prometheus config missing
+      fail:
+        msg: "Prometheus config missing at {{ project_root }}/observability/prometheus/prometheus.yml"
+      when: not prom_cfg.stat.exists
+
+    - name: Restart services to apply monitoring changes
+      shell: docker compose restart prometheus grafana
+      args:
+        chdir: "{{ project_root }}"

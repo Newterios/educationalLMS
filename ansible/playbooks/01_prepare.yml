@@ -1,0 +1,25 @@
+---
+- name: Prepare host for EduLMS deployment
+  hosts: all
+  become: true
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: true
+
+    - name: Install base dependencies
+      apt:
+        name: "{{ docker_packages }}"
+        state: present
+
+    - name: Ensure Docker service enabled
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Ensure project root exists
+      file:
+        path: "{{ project_root }}"
+        state: directory
+        mode: '0755'
