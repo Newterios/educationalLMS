@@ -1,0 +1,33 @@
+---
+- name: Deploy EduLMS with Docker Compose
+  hosts: all
+  become: true
+  tasks:
+    - name: Clone or update repository
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ project_root }}"
+        version: "{{ branch }}"
+        force: true
+
+    - name: Copy environment file if missing
+      copy:
+        src: "{{ project_root }}/.env.example"
+        dest: "{{ project_root }}/.env"
+        remote_src: true
+        force: false
+
+    - name: Start stack
+      shell: docker compose up -d --build
+      args:
+        chdir: "{{ project_root }}"
+
+    - name: Verify containers
+      shell: docker compose ps
+      args:
+        chdir: "{{ project_root }}"
+      register: compose_ps
+
+    - name: Show compose status
+      debug:
+        var: compose_ps.stdout_lines

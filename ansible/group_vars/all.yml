@@ -1,0 +1,10 @@
+---
+project_root: /opt/edulms
+repo_url: https://github.com/Newterios/educationalLMS.git
+branch: main
+
+docker_packages:
+  - docker.io
+  - docker-compose-v2
+  - curl
+  - git
